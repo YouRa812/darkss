@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DARKSS Слоты</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script> 
+    
+    <style>
+        /* ... СТИЛИ БЕЗ ИЗМЕНЕНИЙ (CSS-код остается прежним) ... */
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-y: auto; 
+            background: #0d0d0d; 
+            background: radial-gradient(circle at center, #1a1a2a 0%, #0d0d0d 80%);
+            color: #E0E0E0;
+            position: relative;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+            padding: 30px 20px;
+            box-sizing: border-box;
+            background-color: rgba(10, 10, 10, 0.8);
+            border-radius: 15px;
+            box-shadow: 0 0 50px rgba(90, 24, 154, 0.3);
+            text-align: center;
+        }
+
+        .title-display { padding: 10px 0; margin-bottom: 30px; }
+        .title-display h2 {
+            margin: 0; font-size: 32px; color: #E0A8F8; letter-spacing: 5px;
+            text-shadow: 0 0 15px rgba(224, 168, 248, 0.8);
+        }
+        
+        .slots-area { display: flex; justify-content: space-around; margin-bottom: 40px; }
+
+        .reel {
+            width: 90px; height: 140px; background-color: #000000;
+            border: 3px solid #6200EE; border-radius: 8px;
+            overflow: hidden; 
+            position: relative;
+            box-shadow: inset 0 0 10px rgba(98, 0, 238, 0.5);
+        }
+        
+        @keyframes reel-spin {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-95%); }
+        }
+
+        .symbol-list {
+            display: flex; flex-direction: column; align-items: center;
+            transition: transform 0.1s;
+        }
+
+        .symbol-list div {
+            padding: 10px 0; height: 140px; display: flex; align-items: center; justify-content: center;
+            font-size: 52px; width: 100%;
+        }
+
+        .spinning .symbol-list {
+            animation: reel-spin 0.05s linear infinite;
+        }
+
+        .final-symbol {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 52px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .controls { display: flex; justify-content: space-between; align-items: flex-end; padding-top: 20px; border-top: 1px solid #333333; gap: 10px; }
+        .balance-info { font-size: 14px; color: #AAAAAA; text-align: left; flex-grow: 1; }
+        #current-balance-display { color: #00FFCC; font-weight: bold; font-size: 20px; margin-bottom: 5px; display: block; }
+        .bet-input { width: 100%; box-sizing: border-box; background-color: #222; color: #E0E0E0; border: 1px solid #555; padding: 8px; text-align: center; border-radius: 4px; }
+        .spin-button { padding: 15px 20px; font-size: 20px; font-weight: bold; border: none; border-radius: 8px; background: linear-gradient(45deg, #E91E63, #FF0057); color: #FFFFFF; box-shadow: 0 0 20px rgba(233, 30, 99, 0.7); }
+        .top-up-button { padding: 10px 10px; font-size: 14px; border: 1px solid #5A189A; border-radius: 5px; background-color: transparent; color: #E0A8F8; width: 100px; white-space: nowrap; }
+
+        .payouts-table { margin-top: 30px; width: 100%; border-collapse: collapse; font-size: 14px; }
+        .payouts-table th, .payouts-table td { padding: 10px; border: 1px solid #333; text-align: center; }
+        .payouts-table th { background-color: #222; color: #AAAAAA; }
+        .payouts-table .multiplier { font-weight: bold; color: #00FFCC; }
+
+        #results-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.7); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #1e1e1e; padding: 30px; border-radius: 15px; width: 80%; max-width: 350px; box-shadow: 0 0 25px #00FFFF; text-align: center; border: 3px solid #00FFFF; animation: fadeIn 0.3s; }
+        .modal-content h3 { font-size: 28px; margin-top: 0; color: #FFD700; text-shadow: 0 0 10px #FFD700; }
+        .modal-content p { font-size: 18px; margin: 15px 0; }
+        .modal-button { padding: 10px 20px; background: #E91E63; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        /* ... КОНЕЦ СТИЛЕЙ ... */
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <div class="title-display"><h2>DARKSS</h2></div>
+
+        <div class="slots-area">
+            <div class="reel" id="reel-1"><div class="symbol-list"></div><div class="final-symbol" id="final-1"></div></div>
+            <div class="reel" id="reel-2"><div class="symbol-list"></div><div class="final-symbol" id="final-2"></div></div>
+            <div class="reel" id="reel-3"><div class="symbol-list"></div><div class="final-symbol" id="final-3"></div></div>
+        </div>
+
+        <div class="controls">
+            <div class="balance-info">
+                <span id="current-balance-display">Загрузка...</span>
+                <input type="number" id="bet-amount" class="bet-input" value="100" min="100" placeholder="Ставка">
+            </div>
+            
+            <button class="spin-button" onclick="startSpin()">КРУТИТЬ</button>
+            
+            <button class="top-up-button" onclick="Telegram.WebApp.close()">
+                ЗАКРЫТЬ
+            </button>
+        </div>
+
+        <table class="payouts-table">
+            <thead><tr><th colspan="3">ВЫИГРЫШНЫЕ КОМБИНАЦИИ (3 СИМВОЛА)</th></tr></thead>
+            <tbody>
+                <tr><td>🌙🌙🌙 или 🧭🧭🧭 или 🦉🦉🦉</td><td><span class="multiplier">x2</span></td></tr>
+                <tr><td>🚢🚢🚢 или 💎💎💎</td><td><span class="multiplier">x3</span></td></tr>
+                <tr><td>✨✨✨ (Секретный Джекпот)</td><td><span class="multiplier">x5</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="results-modal">
+        <div class="modal-content">
+            <h3 id="modal-title"></h3>
+            <p id="modal-message"></p>
+            <button class="modal-button" onclick="closeModal()">ОК</button>
+        </div>
+    </div>
+
+    <script>
+        // === ПЕРЕМЕННЫЕ И НАСТРОЙКИ ===
+        let currentBalance = 0; 
+        let accumulatedFund = 0; // Фонд загружается вместе с балансом
+        let isSpinning = false;
+        
+        const symbols = ['🌙', '🧭', '💎', '🦉', '🚢', '✨']; 
+        const reels = [
+            { id: 'reel-1', finalDisplay: document.getElementById('final-1') },
+            { id: 'reel-2', finalDisplay: document.getElementById('final-2') },
+            { id: 'reel-3', finalDisplay: document.getElementById('final-3') }
+        ];
+        
+        const Payouts = {
+            '🌙': 2, '🧭': 2, '🦉': 2, 
+            '🚢': 3, '💎': 3,          
+            '✨': 5                    
+        };
+
+        const balanceDisplay = document.getElementById('current-balance-display');
+        const betInput = document.getElementById('bet-amount');
+        const spinButton = document.querySelector('.spin-button');
+        const resultsModal = document.getElementById('results-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+
+        // === ИНТЕГРАЦИЯ С TELEGRAM WEB APP ===
+
+        function initWebApp() {
+            if (typeof Telegram !== 'undefined' && Telegram.WebApp.initData) {
+                Telegram.WebApp.ready();
+                
+                // Отправляем запрос боту для получения баланса и фонда
+                const initData = Telegram.WebApp.initData;
+                
+                // В реальной жизни это должен быть AJAX/Fetch запрос на внешний API.
+                // Но для простоты, мы отправляем запрос через Telegram.WebApp.sendData
+                // и ждем ответ от бота в виде JSON.
+                
+                // Имитируем запрос баланса (бот должен отреагировать на эту команду)
+                Telegram.WebApp.sendData('GET_BALANCE'); 
+                
+                // ВАЖНО: В данный момент мы не можем получить баланс мгновенно через sendData,
+                // поэтому мы будем обновлять баланс после каждой игры через sendResultToBot
+                // и бот отправит обновленный баланс обратно. 
+                // Пока ставим начальный баланс 500 для теста:
+                currentBalance = 500; 
+                updateDisplays();
+                initializeReels();
+
+            } else {
+                // Режим отладки (вне Telegram)
+                currentBalance = 1000;
+                accumulatedFund = 5000;
+                updateDisplays();
+                initializeReels();
+                showModal('Отладка', 'Запуск вне Telegram. Баланс и Фонд установлены для теста.', false);
+            }
+        }
+        
+        function sendResultToBot(newBalance, fundChange, isWin, payout, isLimit) {
+            if (typeof Telegram !== 'undefined' && Telegram.WebApp.initData) {
+                // Формируем JSON с результатом для передачи боту
+                const data = {
+                    action: 'UPDATE_BALANCE',
+                    new_balance: newBalance,       // Новый баланс игрока (после игры)
+                    fund_change: fundChange,       // На сколько изменился фонд (+ или -)
+                    is_win: isWin,
+                    payout: payout,
+                    is_limit: isLimit              // Был ли выигрыш ограничен фондом
+                };
+
+                // Отправляем данные боту. Бот должен их принять и обновить SQLite
+                Telegram.WebApp.sendData(JSON.stringify(data));
+                
+                // Закрываем Web App, чтобы игрок увидел результат в чате
+                // (Это опционально, но помогает увидеть обратную связь от бота)
+                // Telegram.WebApp.close(); 
+            }
+        }
+
+        // === ОСНОВНЫЕ ФУНКЦИИ СЛОТОВ ===
+        
+        function updateDisplays() {
+            balanceDisplay.textContent = `${currentBalance} БАБОК`;
+            // Для отладки: console.log(`Баланс: ${currentBalance}, Фонд: ${accumulatedFund}`);
+        }
+
+        function closeModal() {
+            resultsModal.style.display = 'none';
+        }
+        
+        function showModal(title, message, isWin) {
+            modalTitle.textContent = title;
+            modalMessage.innerHTML = message;
+            modalTitle.style.color = isWin ? '#00FFCC' : '#FF5733';
+            resultsModal.style.display = 'flex';
+        }
+
+        function initializeReels() {
+            // ... (Код инициализации барабанов без изменений) ...
+            reels.forEach(reel => {
+                const reelElement = document.getElementById(reel.id);
+                const list = reelElement.querySelector('.symbol-list');
+                list.innerHTML = ''; 
+                for (let i = 0; i < 20; i++) {
+                    const symbolDiv = document.createElement('div');
+                    symbolDiv.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                    list.appendChild(symbolDiv);
+                }
+                reel.finalDisplay.style.opacity = '0';
+            });
+        }
+
+        function startSpin() {
+            if (isSpinning) return;
+            const bet = parseInt(betInput.value);
+            const minBet = parseInt(betInput.min);
+
+            if (isNaN(bet) || bet < minBet) {
+                showModal('Ошибка!', `Минимальная ставка: ${minBet} БАБОК.`, false);
+                return;
+            }
+
+            if (currentBalance < bet) {
+                showModal('Ошибка!', 'Недостаточно БАБОК для этой ставки!', false);
+                return;
+            }
+
+            isSpinning = true;
+            spinButton.disabled = true;
+            currentBalance -= bet; // Снимаем ставку немедленно
+            updateDisplays();
+            initializeReels(); 
+
+            reels.forEach(reel => {
+                document.getElementById(reel.id).classList.add('spinning');
+            });
+            
+            // Определяем случайный результат
+            const targetResults = [
+                symbols[Math.floor(Math.random() * symbols.length)],
+                symbols[Math.floor(Math.random() * symbols.length)],
+                symbols[Math.floor(Math.random() * symbols.length)]
+            ];
+
+            const spinTime = 2500; 
+
+            setTimeout(() => stopReel(0, targetResults[0]), 1000);
+            setTimeout(() => stopReel(1, targetResults[1]), 1500);
+            setTimeout(() => stopReel(2, targetResults[2]), 2000);
+
+            setTimeout(() => {
+                processWinLoss(bet, targetResults);
+                isSpinning = false;
+                spinButton.disabled = false;
+            }, spinTime);
+        }
+        
+        function stopReel(index, finalSymbol) {
+            const reelElement = document.getElementById(reels[index].id);
+            const finalDisplay = reels[index].finalDisplay;
+            reelElement.classList.remove('spinning');
+            finalDisplay.textContent = finalSymbol;
+            finalDisplay.style.opacity = '1';
+        }
+
+        function processWinLoss(bet, results) {
+            let outcomeTitle = "ПРОИГРЫШ!";
+            let outcomeMessage = "";
+            let isWin = false;
+            let fundChange = 0; // Изменение фонда
+            let actualPayout = 0; // Фактический выигрыш
+            let isLimit = false;
+            
+            const isMatch = (results[0] === results[1] && results[1] === results[2]);
+
+            if (isMatch) {
+                const winningSymbol = results[0];
+                const multiplier = Payouts[winningSymbol] || 1;
+                const desiredPayout = bet * multiplier; // Полная сумма выплаты (Ставка * Множитель)
+                
+                // В Web App мы не знаем текущий accumulatedFund.
+                // Поэтому мы отправляем желаемую выплату (desiredPayout),
+                // а БОТ (Backend) решит, сколько реально выплатить, исходя из фонда.
+                
+                // Для Front-end: Просто показываем, сколько должно быть.
+                isWin = true;
+                actualPayout = desiredPayout;
+                fundChange = -(desiredPayout - bet); // На сколько уменьшится фонд (если не ограничено)
+                
+                outcomeTitle = 'ПОБЕДА!';
+                outcomeMessage = `ВЫИГРЫШ ${winningSymbol}x3!<br>Желаемый выигрыш: <span style="color:#00FFCC; font-weight: bold;">${desiredPayout} БАБОК</span> (x${multiplier})`;
+                
+                // ВНИМАНИЕ: Здесь мы не знаем реальный актуальный баланс и фонд.
+                // Бот вернет нам новый баланс после проверки фонда.
+                
+            } else {
+                // Проигрыш: 50% ставки идет в фонд
+                const contribution = Math.floor(bet * 0.50);
+                fundChange = contribution; // На сколько увеличится фонд
+                actualPayout = 0;
+                
+                outcomeTitle = 'УДАЧА НЕ НА ВАШЕЙ СТОРОНЕ';
+                outcomeMessage = `Проигрыш.<br>Ваши ${contribution} БАБОК ушли в Накопленный Фонд.`;
+                
+                // Фактически, баланс игрока не меняется, так как мы уже сняли ставку.
+                // Здесь мы только сообщаем боту, что игрок проиграл, и бот обновит фонд.
+            }
+            
+            // 1. Показываем результат игроку
+            showModal(outcomeTitle, outcomeMessage, isWin);
+
+            // 2. Отправляем результат боту для окончательного расчета и обновления баланса в DB
+            // (Отправляем ставку и желаемый выигрыш/проигрыш)
+            sendResultToBot(currentBalance, fundChange, isMatch, actualPayout, isLimit);
+            
+            // 3. После отправки, ждем, что бот пришлет нам новый баланс через специальный метод
+        }
+        
+        // --- ЗАПУСК ---
+        initWebApp();
+        
+    </script>
+</body>
+</html>
