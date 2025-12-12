@@ -56,7 +56,7 @@
             border-radius: 8px; overflow: hidden; position: relative;
         }
         
-        /* Полоса прокрутки (УМЕНЬШЕНО ВРЕМЯ ЗАМЕДЛЕНИЯ: 0.8s -> 0.4s) */
+        /* Полоса прокрутки */
         .reel-strip { 
             display: flex; 
             flex-direction: column; 
@@ -277,11 +277,13 @@
         let isDemoMode = false;
         let isSpinning = false;
         let spinIntervals = [];
+        let currentUserId = null; // Для хранения ID, переданного с бэкенда
 
         // === КОНСТАНТЫ СКОРОСТИ ===
         const SPIN_DURATION = 1000; 
         const STOP_DELAY = 250;     
         const SLOWDOWN_TIME = 400;  
+
 
         // --- НОВАЯ ФУНКЦИЯ: ПАРСИНГ ДАННЫХ ОТ БОТА ---
         function parseInitData() {
@@ -293,7 +295,7 @@
                 try {
                     // Декодирование и парсинг JSON-объекта, переданного из Python
                     const decodedJson = decodeURIComponent(startParam);
-                    return JSON.parse(decodedJson);
+                    return JSON.parse(decodedJson); 
                 } catch (e) {
                     console.error("Failed to parse start_param", e);
                 }
@@ -327,7 +329,7 @@
             let initialBalance = '0';
             
             if (!Telegram.WebApp.initData) {
-                // Демо-режим, если запущен не в Telegram
+                // Демо-режим
                 isDemoMode = true;
                 demoBadge.style.display = 'block';
                 initialBalance = '1000'; 
@@ -339,9 +341,9 @@
 
                 const data = parseInitData();
                 if (data && data.balance !== undefined) {
-                    // Устанавливаем баланс, переданный ботом
                     initialBalance = data.balance; 
-                    statusText.textContent = "СИНХРОНИЗИРОВАНО";
+                    currentUserId = data.user_id; // Считываем ID пользователя
+                    statusText.textContent = `СИНХРОНИЗИРОВАНО. ID: ${currentUserId}`;
                 } else {
                     // Резервный статус, если данные не пришли
                     statusText.textContent = "Синхронизация: Баланс 0"; 
@@ -416,6 +418,7 @@
         }
 
         function determineResult() {
+            // Шанс вин 30%
             const isVisualWin = Math.random() < 0.3; 
             let finalSymbols = [];
             let payoutData = 0;
@@ -452,12 +455,12 @@
                     }
                 } else {
                     // Отправляем результат боту для проверки баланса и выплаты
-                    statusText.textContent = isVisualWin ? "ПРОВЕРКА ВЫИГРЫША..." : "ПРОИГРЫШ";
+                    statusText.textContent = isVisualWin ? "ОЖИДАНИЕ ВЫПЛАТЫ..." : "ПРОИГРЫШ";
                     sendToBot(isVisualWin, payoutData);
                     
-                    // ВАЖНО: После отправки, пользователь должен проверить ЛС бота
-                    // для получения окончательного баланса и подтверждения выигрыша.
-                    // Мы не можем обновить баланс на фронте до ответа бота.
+                    // ВАЖНО: После отправки, пользователь должен обновить сайт
+                    // или снова нажать /start, чтобы увидеть фактический баланс,
+                    // после ответа бота в ЛС.
                 }
             }, SPIN_DURATION + (STOP_DELAY * 2) + SLOWDOWN_TIME + 100); 
         }
@@ -500,6 +503,9 @@
             };
             Telegram.WebApp.sendData(JSON.stringify(dataToSend));
         }
+
+        // Запускаем проверку окружения при загрузке
+        checkEnvironment();
 
     </script>
 </body>
