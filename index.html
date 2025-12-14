@@ -7,7 +7,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        /* CSS СТИЛИ DARKSS */
+        /* СТИЛИ DARKSS */
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
         body { background-color: #050505; color: #fff; font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 100vh; margin: 0; padding: 10px 0 20px 0; overflow: hidden; position: relative; }
         .retro-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, #000000 0%, #1a0b2e 100%); z-index: -2; }
@@ -83,7 +83,6 @@
     </div>
 
     <script>
-        // === ЛОГИКА ===
         const symbols = ['🌙', '🧭', '🚢', '⚡', '🦉', '💎', '7️⃣'];
         const reelSymbolsCount = 30; const symbolHeight = 130;
         let currentBet = 100; const minBet = 10; const maxBet = 1000;
@@ -94,7 +93,7 @@
         const balanceDisplay = document.getElementById('balanceDisplay');
         const statusText = document.getElementById('statusText');
         
-        // ПОЛУЧЕНИЕ БАЛАНСА
+        // 1. ПОЛУЧЕНИЕ БАЛАНСА
         function getStartParam() {
             const unsafe = Telegram.WebApp.initDataUnsafe;
             if (unsafe && unsafe.start_param) return unsafe.start_param;
@@ -121,19 +120,15 @@
                     statusText.textContent = "ОШИБКА ДАННЫХ";
                 }
             } else {
-                // ДАННЫХ НЕТ
                 if (!Telegram.WebApp.initData) {
-                    // Если открыли просто в браузере (не телеграм) - включим демо на 1000
                     isDemoMode = true;
                     document.getElementById('demoBadge').style.display = 'block';
                     balanceDisplay.textContent = '1000';
                     statusText.textContent = "DEMO (БРАУЗЕР)";
                 } else {
-                    // Если открыли в телеграме, но БЕЗ ССЫЛКИ ОТ БОТА
-                    statusText.textContent = "ОЖИДАНИЕ БОТА...";
+                    statusText.textContent = "ЗАПУСТИТЕ ЧЕРЕЗ БОТА";
                     statusText.style.color = "red";
                     balanceDisplay.textContent = "0";
-                    // alert("Откройте игру через кнопку в боте!");
                 }
             }
             initializeStrips();
@@ -165,9 +160,8 @@
             if (isSpinning) return;
             let bal = parseInt(balanceDisplay.textContent);
             
-            // Если денег нет и это не демо
             if (bal < currentBet && !isDemoMode) { 
-                statusText.textContent = "ПОПОЛНИТЕ БАЛАНС";
+                statusText.textContent = "НЕТ СРЕДСТВ";
                 statusText.style.color = "red";
                 return; 
             }
@@ -191,7 +185,7 @@
                 }, 50);
             });
 
-            setTimeout(stopSpin, 2000);
+            setTimeout(stopSpin, 1500);
         }
 
         function stopSpin() {
@@ -219,10 +213,11 @@
                 document.getElementById('spinButton').disabled = false;
 
                 if (isDemoMode) {
-                    statusText.textContent = "DEMO ЗАВЕРШЕНО";
+                    statusText.textContent = "DEMO СПИН ЗАВЕРШЕН";
                 } else {
                     statusText.textContent = "ОТПРАВКА...";
-                    // Отправляем ставку. Бот сам посчитает выигрыш и пришлет новую ссылку.
+                    // 2. ОТПРАВЛЯЕМ ДАННЫЕ И ЗАКРЫВАЕМ ОКНО
+                    // Бот получит данные, обновит баланс в БД и пришлет новое сообщение
                     const data = { action: 'SPIN', bet: currentBet };
                     Telegram.WebApp.sendData(JSON.stringify(data));
                 }
