@@ -7,7 +7,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        /* СТИЛИ */
+        /* ВЕСЬ ВАШ СТАРЫЙ CSS ОСТАЛСЯ БЕЗ ИЗМЕНЕНИЙ */
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
         body { background-color: #050505; color: #fff; font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 100vh; margin: 0; padding: 10px 0 20px 0; overflow: hidden; position: relative; }
         .retro-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, #000000 0%, #1a0b2e 100%); z-index: -2; }
@@ -64,7 +64,7 @@
         <div class="info-row">
             <div>
                 <div class="info-label">ВАШ БАЛАНС</div>
-                <div class="info-value"><span id="balanceDisplay">0</span> БАБОК</div>
+                <div class="info-value"><span id="balanceDisplay">...</span> БАБОК</div>
             </div>
             <div style="text-align: right;">
                 <div class="info-label">СТАТУС</div>
@@ -83,6 +83,7 @@
     </div>
 
     <script>
+        // === ВАШ ДИЗАЙН И ЛОГИКА ===
         const symbols = ['🌙', '🧭', '🚢', '⚡', '🦉', '💎', '7️⃣'];
         const reelSymbolsCount = 30; const symbolHeight = 130;
         let currentBet = 100; const minBet = 10; const maxBet = 1000;
@@ -93,40 +94,58 @@
         const balanceDisplay = document.getElementById('balanceDisplay');
         const statusText = document.getElementById('statusText');
         
-        // --- 1. ПАРСИНГ ДАННЫХ (СИНХРОНИЗАЦИЯ) ---
-        function parseInitData() {
-            if (!Telegram.WebApp.initData) return null;
-            const urlParams = new URLSearchParams(Telegram.WebApp.initData);
-            const startParam = urlParams.get('start_param');
-            if (startParam) {
-                try {
-                    return JSON.parse(decodeURIComponent(startParam));
-                } catch (e) { console.error(e); }
+        // === ГЛАВНОЕ ИСПРАВЛЕНИЕ: ПОЛУЧЕНИЕ БАЛАНСА ИЗ БОТА ===
+        function getStartParam() {
+            // 1. Пробуем стандартный способ Telegram
+            const unsafe = Telegram.WebApp.initDataUnsafe;
+            if (unsafe && unsafe.start_param) {
+                return unsafe.start_param;
             }
-            return null;
+            // 2. Пробуем парсинг URL (запасной вариант)
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('start_param');
         }
 
         function checkEnvironment() {
-            if (!Telegram.WebApp.initData) {
-                isDemoMode = true; document.getElementById('demoBadge').style.display = 'block';
-                balanceDisplay.textContent = '1000'; statusText.textContent = "DEMO MODE";
-            } else {
-                Telegram.WebApp.ready(); Telegram.WebApp.expand();
-                const data = parseInitData();
-                if (data && data.balance !== undefined) {
-                    balanceDisplay.textContent = data.balance;
-                    currentUserId = data.user_id;
-                    statusText.textContent = `СИНХРОНИЗАЦИЯ УСПЕШНА. ID: ${currentUserId}`;
-                    statusText.style.color = "#00ffff";
-                } else {
-                    statusText.textContent = "СБОЙ: БАЛАНС НЕ ПОЛУЧЕН";
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+
+            const rawParam = getStartParam();
+
+            if (rawParam) {
+                try {
+                    // Декодируем данные, которые бот зашил в ссылку
+                    const data = JSON.parse(decodeURIComponent(rawParam));
+                    if (data.balance !== undefined) {
+                        balanceDisplay.textContent = data.balance;
+                        currentUserId = data.user_id;
+                        statusText.textContent = "СИНХРОНИЗАЦИЯ: OK";
+                        statusText.style.color = "#00ff00";
+                    }
+                } catch (e) {
+                    console.error(e);
+                    statusText.textContent = "ОШИБКА JSON";
                     statusText.style.color = "red";
+                }
+            } else {
+                // Если запустили НЕ через специальную кнопку бота
+                if (!Telegram.WebApp.initData) {
+                    isDemoMode = true;
+                    document.getElementById('demoBadge').style.display = 'block';
+                    balanceDisplay.textContent = '1000';
+                    statusText.textContent = "DEMO (БРАУЗЕР)";
+                } else {
+                    // Та самая ошибка, что была у вас
+                    statusText.textContent = "ЗАПУСК НЕ ИЗ БОТА";
+                    statusText.style.color = "red";
+                    balanceDisplay.textContent = "0";
+                    alert("Пожалуйста, запустите игру через команду /start в боте!");
                 }
             }
             initializeStrips();
         }
 
-        // --- 2. ЛОГИКА ИГРЫ ---
+        // --- ВИЗУАЛ И АНИМАЦИИ (как в вашем файле) ---
         function initializeStrips() {
             strips.forEach(strip => {
                 strip.innerHTML = '';
@@ -152,20 +171,28 @@
         function startSpin() {
             if (isSpinning) return;
             let bal = parseInt(balanceDisplay.textContent);
-            if (bal < currentBet && !isDemoMode) { statusText.textContent = "НЕТ БАБОК"; return; }
+            
+            // Если баланс меньше ставки и это не демо
+            if (bal < currentBet && !isDemoMode) { 
+                statusText.textContent = "НЕДОСТАТОЧНО СРЕДСТВ";
+                statusText.style.color = "red";
+                return; 
+            }
 
             isSpinning = true;
             document.getElementById('spinButton').disabled = true;
             statusText.textContent = "КРУТИМ...";
+            statusText.style.color = "#fff";
             
-            // Визуально списываем ставку для красоты (но реальный баланс считает бот)
+            // Визуально отнимаем деньги (для мгновенной реакции)
             balanceDisplay.textContent = bal - currentBet;
 
+            // Скрываем прошлый результат и запускаем анимацию
             resultSymbols.forEach(el => el.classList.remove('active'));
             strips.forEach(strip => {
                 strip.classList.add('spinning');
                 strip.style.transform = `translateY(0)`;
-                // CSS анимация вращения
+                // Простая CSS анимация
                 let y = 0;
                 strip.dataset.interval = setInterval(() => {
                     y -= symbolHeight; if (y <= -(reelSymbolsCount * symbolHeight)) y = 0;
@@ -173,11 +200,12 @@
                 }, 50);
             });
 
-            setTimeout(stopSpin, 1000);
+            // Через 2 секунды останавливаем
+            setTimeout(stopSpin, 2000);
         }
 
         function stopSpin() {
-            // Выбираем случайные символы для визуала
+            // Генерируем случайные символы для визуала
             const final = [
                 symbols[Math.floor(Math.random() * symbols.length)],
                 symbols[Math.floor(Math.random() * symbols.length)],
@@ -188,7 +216,7 @@
                 clearInterval(strip.dataset.interval);
                 strip.classList.remove('spinning');
                 const idx = symbols.indexOf(final[i]);
-                const pos = (5 * symbols.length) + idx; // Позиция остановки
+                const pos = (5 * symbols.length) + idx; 
                 strip.style.transform = `translateY(${-pos * symbolHeight}px)`;
                 
                 setTimeout(() => {
@@ -200,16 +228,19 @@
             setTimeout(() => {
                 isSpinning = false;
                 document.getElementById('spinButton').disabled = false;
+
                 if (isDemoMode) {
-                    statusText.textContent = "DEMO ЗАВЕРШЕНО";
+                    statusText.textContent = "DEMO СПИН ЗАВЕРШЕН";
                 } else {
-                    statusText.textContent = "ПРОВЕРЬТЕ БОТА...";
-                    // ОТПРАВЛЯЕМ СТАВКУ БОТУ
-                    Telegram.WebApp.sendData(JSON.stringify({ action: 'SPIN', bet: currentBet }));
+                    statusText.textContent = "ОТПРАВКА В БОТ...";
+                    // ОТПРАВЛЯЕМ ДАННЫЕ В БОТ
+                    const data = { action: 'SPIN', bet: currentBet };
+                    Telegram.WebApp.sendData(JSON.stringify(data));
                 }
             }, 1000);
         }
 
+        // Запуск
         checkEnvironment();
     </script>
 </body>
